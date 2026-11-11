@@ -6,14 +6,26 @@
         ".write": "auth != null && auth.uid === $uid"
       }
     },
-    "chats": {
-      "$chatId": {
-        ".read": "auth != null && $chatId.contains(auth.uid)",
-        ".write": "auth != null && $chatId.contains(auth.uid)",
-        "messages": {
-          ".indexOn": ["createdAt"],
-          "$msgId": {
-            ".validate": "newData.hasChildren(['senderId', 'type', 'createdAt']) && newData.child('senderId').val() === auth.uid"
+    "conversations": {
+      "$cid": {
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (data.child('members').child(auth.uid).exists() || (!data.exists() && (newData.child('members').child(auth.uid).exists() || $cid.contains(auth.uid))))"
+      }
+    },
+    "messages": {
+      "$cid": {
+        ".read": "auth != null && root.child('conversations').child($cid).child('members').child(auth.uid).exists()",
+        "$mid": {
+          ".write": "auth != null && !data.exists() && newData.child('senderId').val() === auth.uid && (root.child('conversations').child($cid).child('members').child(auth.uid).exists() || newData.parent().parent().parent().child('conversations').child($cid).child('members').child(auth.uid).exists())",
+          ".validate": "newData.hasChildren(['senderId', 'type', 'createdAt'])",
+          "recalled": {
+            ".write": "auth != null && data.parent().child('senderId').val() === auth.uid",
+            ".validate": "newData.val() === true"
+          },
+          "reactions": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('conversations').child($cid).child('members').child(auth.uid).exists()"
+            }
           }
         }
       }
@@ -21,8 +33,32 @@
     "userChats": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        "$otherId": {
-          ".write": "auth != null && (auth.uid === $uid || auth.uid === $otherId)"
+        "$cid": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('conversations').child($cid).child('members').child(auth.uid).exists() || newData.parent().parent().parent().child('conversations').child($cid).child('members').child(auth.uid).exists())"
+        }
+      }
+    },
+    "typing": {
+      "$cid": {
+        ".read": "auth != null && root.child('conversations').child($cid).child('members').child(auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('conversations').child($cid).child('members').child(auth.uid).exists()"
+        }
+      }
+    },
+    "readStatus": {
+      "$cid": {
+        ".read": "auth != null && root.child('conversations').child($cid).child('members').child(auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('conversations').child($cid).child('members').child(auth.uid).exists()"
+        }
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$nid": {
+          ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.child('fromUid').val() === auth.uid))"
         }
       }
     }

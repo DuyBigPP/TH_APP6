@@ -6,12 +6,19 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import {ref, set, update, onValue, onDisconnect, serverTimestamp} from 'firebase/database';
-import {auth, db} from './firebase';
+import {
+  ref,
+  set,
+  update,
+  onValue,
+  onDisconnect,
+  serverTimestamp,
+} from 'firebase/database';
+import { auth, db } from './firebase';
 
 export async function register(name: string, email: string, password: string) {
-  const {user} = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(user, {displayName: name});
+  const { user } = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(user, { displayName: name });
   await set(ref(db, `users/${user.uid}`), {
     name,
     email,
@@ -27,7 +34,10 @@ export function login(email: string, password: string) {
 export async function logout() {
   const uid = auth.currentUser?.uid;
   if (uid) {
-    await update(ref(db, `users/${uid}`), {online: false, lastSeen: serverTimestamp()});
+    await update(ref(db, `users/${uid}`), {
+      online: false,
+      lastSeen: serverTimestamp(),
+    });
   }
   await signOut(auth);
 }
@@ -42,8 +52,8 @@ export function setupPresence(uid: string) {
   return onValue(ref(db, '.info/connected'), snap => {
     if (snap.val() !== true) return;
     onDisconnect(userRef)
-      .update({online: false, lastSeen: serverTimestamp()})
-      .then(() => update(userRef, {online: true}));
+      .update({ online: false, lastSeen: serverTimestamp() })
+      .then(() => update(userRef, { online: true }));
   });
 }
 
@@ -64,4 +74,14 @@ export function friendlyAuthError(code: string): string {
     default:
       return 'Có lỗi xảy ra: ' + code;
   }
+}
+
+// Phần C: đổi họ tên / ảnh đại diện -> Danh bạ, Home, Chat đọc users/{uid} nên tự cập nhật
+export async function updateMyProfile(p: {
+  name?: string;
+  avatarUrl?: string;
+}) {
+  const user = auth.currentUser!;
+  if (p.name) await updateProfile(user, { displayName: p.name });
+  await update(ref(db, `users/${user.uid}`), p);
 }
